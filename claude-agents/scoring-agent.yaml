@@ -1,0 +1,31 @@
+name: scoring-agent
+description: Computes lead scores and exports results
+
+mcp_servers:
+  - filesystem    # File operations, CSV export
+
+skills:
+  - lead-scorer
+
+autonomy: autonomous
+
+workflow:
+  - step: 1
+    action: Load all contacts with associated signals for the given vertical
+  - step: 2
+    action: Invoke lead-scorer skill
+  - step: 3
+    action: Write scores to lead_scores table
+  - step: 4
+    action: Export to CSV (Google Sheets integration in Phase 1b)
+  - step: 5
+    action: Report summary with total scored, tier distribution, top 10 leads
+
+output_formats:
+  - csv            # Always available
+  # - google_sheets  # Phase 1b: requires Google Sheets MCP
+
+error_handling:
+  log_directory: logs/
+  log_pattern: scoring-YYYY-MM-DD.log
+  silent_failures: never

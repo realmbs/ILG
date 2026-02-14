@@ -1,0 +1,85 @@
+{
+  "vertical_id": "law-schools-aba-accredited",
+  "vertical_name": "ABA-Accredited Law Schools — Nationwide",
+  "description": "ABA-accredited law schools and paralegal programs across the United States",
+
+  "org_discovery": {
+    "org_types": ["law school", "university school of law"],
+    "size_filter": { "min_employees": 20, "max_employees": 500 },
+    "geography": { "states": [], "cities": [] },
+    "industry_filters": ["legal education", "ABA-accredited", "juris doctor program", "paralegal program"],
+    "discovery_sources": [
+      "ABA Approved Law Schools list",
+      "U.S. News Best Law Schools rankings",
+      "LSAC.org school search",
+      "Google Maps business search"
+    ],
+    "qualifying_signals": [
+      "curriculum pages mentioning technology training",
+      "accreditation-driven technology requirements",
+      "recent faculty hires in legal technology"
+    ]
+  },
+
+  "contact_targeting": {
+    "role_targets": [
+      {
+        "title_patterns": ["Dean", "Associate Dean of Academic Affairs", "Associate Dean"],
+        "priority": "high",
+        "is_decision_maker": true
+      },
+      {
+        "title_patterns": ["Director of Academic Technology", "Director of Law Library", "Chief Information Officer"],
+        "priority": "high",
+        "is_decision_maker": true
+      },
+      {
+        "title_patterns": ["Legal Writing Director", "Clinical Program Director", "Director of Legal Skills"],
+        "priority": "medium",
+        "is_decision_maker": false
+      },
+      {
+        "title_patterns": ["Professor", "Assistant Professor", "Lecturer"],
+        "priority": "low",
+        "is_decision_maker": false
+      }
+    ],
+    "max_contacts_per_org": 5
+  },
+
+  "signal_taxonomy": [
+    { "type": "HIRING_INTENT", "weight": 1.5, "description": "Job postings for technology, curriculum development, or innovation roles", "keywords": ["hiring", "faculty search", "open position", "seeking candidates"] },
+    { "type": "PAIN_POINT", "weight": 1.5, "description": "Frustration with curriculum tools, LMS, or training platforms", "keywords": ["frustrated", "struggling", "outdated curriculum", "inefficient", "student complaints"] },
+    { "type": "TECH_ADOPTION", "weight": 2.0, "description": "Evaluating or adopting educational technology, LMS, or training tools", "keywords": ["implementing", "evaluating", "LMS", "online learning", "hybrid curriculum", "simulation-based training", "legal tech curriculum"] },
+    { "type": "COMPETITIVE", "weight": 1.5, "description": "Mentions of competitor training products or alternative platforms", "keywords": [] },
+    { "type": "BUDGET", "weight": 2.0, "description": "Budget discussions, grants, or investment in technology", "keywords": ["budget", "grant funding", "technology investment", "curriculum modernization"] },
+    { "type": "GROWTH", "weight": 1.8, "description": "Program expansion, new clinics, enrollment growth", "keywords": ["new program", "enrollment growth", "expansion", "new clinic", "partnership"] },
+    { "type": "REGULATORY", "weight": 1.5, "description": "ABA accreditation requirements driving technology adoption", "keywords": ["ABA standard", "accreditation", "compliance requirement", "bar passage"] }
+  ],
+
+  "social_monitoring": {
+    "linkedin_keywords": ["legal education technology", "law school curriculum", "legal skills training", "experiential learning law"],
+    "reddit_subreddits": ["r/LawSchool", "r/law", "r/LegalTech", "r/professors"],
+    "reddit_keywords": ["law school technology", "legal education software", "legal writing tools", "law school LMS"],
+    "twitter_hashtags": ["#LegalEd", "#LawSchool", "#LegalTech", "#BarPrep"],
+    "twitter_keywords": ["law school technology", "legal education innovation"]
+  },
+
+  "scoring": {
+    "weights": {
+      "signal_recency_decay": 0.9,
+      "decision_maker_bonus": 1.5,
+      "multi_signal_bonus": 1.3,
+      "org_size_fit_bonus": 1.2
+    },
+    "recency_windows": {
+      "hot": { "days": 7, "multiplier": 3.0 },
+      "warm": { "days": 30, "multiplier": 1.5 },
+      "cool": { "days": 90, "multiplier": 1.0 },
+      "stale": { "days": 180, "multiplier": 0.3 }
+    }
+  },
+
+  "competitor_products": [],
+  "value_proposition_context": ""
+}

@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@anthropic-ai/mcp-playwright"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "@anthropic-ai/mcp-filesystem",
+        "/Users/markblaha/ILG"
+      ]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["@anthropic-ai/mcp-sequential-thinking"]
+    }
+  }
+}

@@ -1,0 +1,37 @@
+name: enrichment-agent
+description: Extracts and enriches contacts at discovered organizations
+
+mcp_servers:
+  - playwright    # Website crawling for team pages
+  - filesystem    # File operations
+
+skills:
+  - contact-extractor
+
+autonomy: autonomous
+# Runs within rate limits without user review checkpoints
+
+workflow:
+  - step: 1
+    action: Load un-enriched organizations from DB for the given vertical
+  - step: 2
+    action: For each org, invoke contact-extractor skill
+  - step: 3
+    action: Log all enrichment activity
+  - step: 4
+    action: Report summary on completion
+
+rate_limits:
+  playwright_delay_ms_min: 2000
+  playwright_delay_ms_max: 8000
+  linkedin_lookups_per_day: 45       # Hard stop (Proxycurl free tier)
+  linkedin_delay_ms_min: 30000       # 30-120 second randomized delays
+  linkedin_delay_ms_max: 120000
+  max_contacts_per_org: 5            # From vertical config
+
+error_handling:
+  log_directory: logs/
+  log_pattern: enrichment-YYYY-MM-DD.log
+  on_website_unreachable: skip_org_continue
+  on_playwright_timeout: retry_once_then_skip
+  silent_failures: never

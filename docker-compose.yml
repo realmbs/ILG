@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: ilg-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/home/node/workflows
+      - ./db:/home/node/db
+      - ./config:/home/node/config
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=ilg-admin
+      - GENERIC_TIMEZONE=America/Chicago
+      - N8N_LOG_LEVEL=info
+
+volumes:
+  n8n_data:

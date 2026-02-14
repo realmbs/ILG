@@ -1,0 +1,85 @@
+{
+  "vertical_id": "law-firms-general",
+  "vertical_name": "Law Firms — All Practice Areas",
+  "description": "Law firms of all sizes and practice areas, broad discovery net",
+
+  "org_discovery": {
+    "org_types": ["law firm"],
+    "size_filter": { "min_employees": 10, "max_employees": 10000 },
+    "geography": { "states": [], "cities": [] },
+    "industry_filters": ["law firm", "legal services", "attorney", "legal practice"],
+    "discovery_sources": [
+      "Martindale-Hubbell directory",
+      "Chambers and Partners rankings",
+      "Am Law 200 list",
+      "Super Lawyers listings",
+      "Google Maps business search"
+    ],
+    "qualifying_signals": [
+      "technology or innovation pages on firm website",
+      "recent technology-related job postings"
+    ]
+  },
+
+  "contact_targeting": {
+    "role_targets": [
+      {
+        "title_patterns": ["Managing Partner", "Partner", "Chief Operating Officer", "Director of Operations"],
+        "priority": "high",
+        "is_decision_maker": true
+      },
+      {
+        "title_patterns": ["IT Director", "Director of Technology", "Chief Information Officer", "Innovation Officer", "Chief Innovation Officer"],
+        "priority": "high",
+        "is_decision_maker": true
+      },
+      {
+        "title_patterns": ["Legal Administrator", "Office Manager", "Director of Administration", "Practice Manager"],
+        "priority": "medium",
+        "is_decision_maker": false
+      },
+      {
+        "title_patterns": ["Associate", "Of Counsel", "Counsel"],
+        "priority": "low",
+        "is_decision_maker": false
+      }
+    ],
+    "max_contacts_per_org": 5
+  },
+
+  "signal_taxonomy": [
+    { "type": "HIRING_INTENT", "weight": 1.5, "description": "Job postings for tech, operations, or innovation roles", "keywords": ["hiring", "job opening", "now hiring", "seeking candidates"] },
+    { "type": "PAIN_POINT", "weight": 1.5, "description": "Expressed frustration with current tools, processes, or inefficiencies", "keywords": ["frustrated", "struggling", "outdated", "inefficient", "broken process", "manual process"] },
+    { "type": "TECH_ADOPTION", "weight": 2.0, "description": "Discussion of evaluating, adopting, or migrating technology", "keywords": ["implementing", "evaluating", "migrating to", "piloting", "AI tools", "legal tech", "cloud migration"] },
+    { "type": "COMPETITIVE", "weight": 1.5, "description": "Mentions of competitor products or alternative solutions", "keywords": [] },
+    { "type": "BUDGET", "weight": 2.0, "description": "Budget discussions, funding, or investment signals", "keywords": ["budget", "investment", "modernization", "digital transformation", "technology spend"] },
+    { "type": "GROWTH", "weight": 1.8, "description": "Firm expansion, new offices, mergers, or practice area growth", "keywords": ["expansion", "new office", "merger", "growing practice", "lateral hire"] },
+    { "type": "REGULATORY", "weight": 1.0, "description": "Response to regulatory changes affecting operations or technology requirements", "keywords": ["compliance", "regulation", "cybersecurity requirement"] }
+  ],
+
+  "social_monitoring": {
+    "linkedin_keywords": ["legal technology", "law firm technology", "practice management", "legal operations", "legal innovation"],
+    "reddit_subreddits": ["r/law", "r/lawyers", "r/LegalTech", "r/biglaw", "r/lawfirm"],
+    "reddit_keywords": ["law firm software", "legal tech stack", "case management", "practice management", "document management"],
+    "twitter_hashtags": ["#LegalTech", "#LawFirm", "#LegalOps", "#LawFirmTech"],
+    "twitter_keywords": ["law firm technology", "legal innovation", "legal tech"]
+  },
+
+  "scoring": {
+    "weights": {
+      "signal_recency_decay": 0.9,
+      "decision_maker_bonus": 1.5,
+      "multi_signal_bonus": 1.3,
+      "org_size_fit_bonus": 1.2
+    },
+    "recency_windows": {
+      "hot": { "days": 7, "multiplier": 3.0 },
+      "warm": { "days": 30, "multiplier": 1.5 },
+      "cool": { "days": 90, "multiplier": 1.0 },
+      "stale": { "days": 180, "multiplier": 0.3 }
+    }
+  },
+
+  "competitor_products": [],
+  "value_proposition_context": ""
+}

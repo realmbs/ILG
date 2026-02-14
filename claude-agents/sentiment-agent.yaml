@@ -1,0 +1,45 @@
+name: sentiment-agent
+description: Collects and classifies social media signals
+
+status: phase-2
+# This agent requires custom MCP servers (reddit-mcp, twitter-mcp, linkedin-mcp)
+# that will be built in Phase 2.
+
+mcp_servers:
+  - reddit-mcp     # Custom: Reddit signal collection
+  - twitter-mcp    # Custom: Twitter signal collection
+  - linkedin-mcp   # Custom: LinkedIn signal collection
+  - filesystem
+
+skills:
+  - sentiment-classifier
+
+autonomy: autonomous
+
+workflow:
+  - step: 1
+    action: Load vertical_config.social_monitoring keywords and subreddit lists
+  - step: 2
+    action: Collect raw signals via Reddit, Twitter, LinkedIn MCPs
+  - step: 3
+    action: Store raw signals in signals table
+  - step: 4
+    action: Batch and invoke sentiment-classifier skill
+  - step: 5
+    action: Write classified results back to signals table
+  - step: 6
+    action: Resolve entity mentions to existing DB records
+
+rate_limits:
+  reddit_requests_per_minute: 30
+  twitter_reads_per_month: 1400      # Hard stop (free tier = 1500)
+  twitter_warn_at: 1000
+  linkedin_lookups_per_day: 45
+  linkedin_delay_ms_min: 30000
+  linkedin_delay_ms_max: 120000
+
+error_handling:
+  log_directory: logs/
+  log_pattern: sentiment-YYYY-MM-DD.log
+  on_api_limit_reached: stop_and_report
+  silent_failures: never

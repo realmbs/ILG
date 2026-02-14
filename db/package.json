@@ -1,0 +1,13 @@
+{
+  "name": "ilg-db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "init": "node init.js",
+    "reset": "rm -f ilg.db ilg.db-wal ilg.db-shm && node init.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0"
+  }
+}

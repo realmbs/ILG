@@ -1,0 +1,44 @@
+name: org-discovery-agent
+description: Discovers organizations matching a vertical config using web scraping
+
+mcp_servers:
+  - playwright    # Web scraping via accessibility tree
+  - filesystem    # Local file read/write for configs and logs
+
+skills:
+  - vertical-adapter   # Generate or load vertical config
+  - org-discoverer     # Execute discovery crawls
+
+autonomy: semi-autonomous
+# Pauses for user review after discovery, before committing to database
+
+review_checkpoints:
+  - after_vertical_config_generation  # Show config summary, wait for approval
+  - after_discovery_complete          # Show org list summary, wait for approval
+
+workflow:
+  - step: 1
+    action: Accept vertical description from user (or load existing vertical_config from DB/files)
+  - step: 2
+    action: If new vertical, invoke vertical-adapter skill to generate config
+  - step: 3
+    action: Present vertical config summary for user approval
+  - step: 4
+    action: On approval, invoke org-discoverer skill
+  - step: 5
+    action: Present discovery summary (orgs found, new, updated, top by fit_score)
+  - step: 6
+    action: On approval, commit discovered orgs to organizations table
+
+rate_limits:
+  playwright_delay_ms_min: 2000
+  playwright_delay_ms_max: 8000
+  max_pages_per_source: 10
+  max_total_page_loads: 100
+
+error_handling:
+  log_directory: logs/
+  log_pattern: org-discovery-YYYY-MM-DD.log
+  on_source_failure: continue_with_remaining
+  on_playwright_timeout: retry_once_then_skip
+  silent_failures: never
