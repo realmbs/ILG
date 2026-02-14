@@ -78,12 +78,24 @@ The `org_size_fit_bonus` (1.2) applies when the org falls within the configured 
 
 ### Step 5: Compute Composite Score
 
+**Phase detection** — check if signals exist for this vertical:
+```sql
+SELECT COUNT(*) as signal_count FROM signals WHERE vertical_id = ?
+```
+
+**If signals exist (Phase 2+):**
 ```
 composite_score = (signal_score * 0.5) + (role_score * 0.3) + (org_fit_score * 0.2)
 ```
 
+**If NO signals exist (Phase 1):**
+```
+composite_score = (role_score * 0.6) + (org_fit_score * 0.4)
+```
+Signal weight is redistributed to role and org fit when no sentiment data is available. This prevents 50% of the formula from producing zeros.
+
 Apply bonuses:
-- `multi_signal_bonus` (1.3x): If the contact has 3+ distinct signal_types
+- `multi_signal_bonus` (1.3x): If the contact has 3+ distinct signal_types (Phase 2+ only)
 
 Normalize final score to a 0-100 scale.
 
@@ -113,6 +125,23 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'v1')
 The `signal_breakdown_json` should contain:
 ```json
 {
+  "phase": "1",
+  "weights_used": {"signal": 0.0, "role": 0.6, "org_fit": 0.4},
+  "signal_score": 0,
+  "signal_details": [],
+  "role_score": 4.5,
+  "role_details": {"priority": "high", "is_decision_maker": true},
+  "org_fit_score": 0.86,
+  "bonuses_applied": [],
+  "model_version": "v1"
+}
+```
+
+When signals exist (Phase 2+), the breakdown uses:
+```json
+{
+  "phase": "2+",
+  "weights_used": {"signal": 0.5, "role": 0.3, "org_fit": 0.2},
   "signal_score": 12.5,
   "signal_details": [
     {"type": "TECH_ADOPTION", "intensity": 8, "weight": 2.0, "recency": "hot", "contribution": 48.0}

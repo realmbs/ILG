@@ -15,6 +15,25 @@ Discover organizations matching a vertical config's org_discovery criteria using
 - `vertical_config.org_discovery` object containing: org_types, size_filter, geography, industry_filters, discovery_sources, qualifying_signals
 - `vertical_config.vertical_id` for foreign key linkage
 
+## Playwright Strategy
+
+**Use `browser_run_code` for data extraction from results pages. Use click-by-click only for search form interaction.**
+
+- **Search forms** (filling filters, clicking submit): Click-by-click is acceptable — typically 1-2 page interactions
+- **Results extraction** (reading org data from listings): Use `browser_run_code` to extract all results from each page in a single turn
+- **Pagination**: Handle within `run_code` scripts when possible, or use `browser_click` for "Next" buttons
+
+**Cookie/Popup Handling — ALWAYS do this first on any page:**
+```javascript
+// Dismiss cookie consent popup (non-blocking)
+const cookieBtn = page.locator('button:has-text("Accept"), button:has-text("Agree"), button:has-text("Got it")').first();
+if (await cookieBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+  await cookieBtn.click().catch(() => {});
+}
+```
+
+~60% of sites have cookie consent banners that intercept pointer events. Dismiss proactively before any interaction.
+
 ## Process
 
 ### Step 1: Plan Discovery Strategy
@@ -36,12 +55,13 @@ Present the discovery plan to the user before executing:
 
 For each discovery source:
 1. Use Playwright MCP `browser_navigate` to load the search page
-2. Use `browser_snapshot` to read the accessibility tree
-3. Identify search/filter form elements
+2. **Dismiss cookie/privacy popups** as the first action (see Playwright Strategy above)
+3. Use `browser_snapshot` to read the accessibility tree and identify search/filter form elements
 4. Use `browser_click` and `browser_type` to fill in search criteria from the config
-5. Submit the search and read results
-6. For paginated results, iterate through pages (max 10 pages per source to respect rate limits)
-7. Pause 2-8 seconds (randomized) between page loads
+5. Submit the search
+6. **Use `browser_run_code` to extract all results** from the current page in one call (avoid reading each result via snapshot individually)
+7. For paginated results, iterate through pages (max 10 pages per source to respect rate limits)
+8. Pause 2-8 seconds (randomized) between page loads
 
 ### Step 3: Extract Org Data
 
@@ -96,13 +116,14 @@ Before committing to the database, present:
 On user approval:
 ```sql
 INSERT INTO organizations (vertical_id, name, org_type, website, state, city, size_estimate,
-  industry_tags, fit_score, discovery_source, raw_data_json)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  industry_tags, fit_score, discovery_source, raw_data_json, processing_status)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'discovered')
 ```
 
 ## Error Handling
 
 - If a discovery source is unreachable or has changed its layout, log the error and continue with remaining sources. Never fail the entire discovery because one source is down.
+- **Cookie/privacy popups**: Dismiss proactively on every page. If dismissal fails, continue anyway (non-blocking).
 - If Playwright MCP times out on a page, retry once with a longer timeout, then skip and log.
 - Log all errors to `logs/org-discovery-YYYY-MM-DD.log` with full context.
 

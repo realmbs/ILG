@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS organizations (
     fit_score REAL DEFAULT 0.0,
     discovery_source TEXT,
     raw_data_json TEXT,
+    processing_status TEXT DEFAULT 'discovered',  -- 'discovered' | 'enriching' | 'enriched' | 'no_public_team_page' | 'error'
+    enrichment_attempted_at DATETIME,
+    enrichment_error_log TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (vertical_id) REFERENCES vertical_configs(vertical_id)
@@ -45,6 +48,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     linkedin_url TEXT,
     role_category TEXT,          -- maps to contact_targeting role priority
     is_decision_maker BOOLEAN DEFAULT 0,
+    email_status TEXT DEFAULT 'not_checked',  -- 'not_checked' | 'found' | 'not_found'
     profile_data_json TEXT,      -- cached LinkedIn/web profile data
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -136,3 +140,4 @@ CREATE INDEX IF NOT EXISTS idx_lead_scores_contact ON lead_scores(contact_id);
 CREATE INDEX IF NOT EXISTS idx_lead_scores_tier ON lead_scores(tier);
 CREATE INDEX IF NOT EXISTS idx_cache_lookup ON enrichment_cache(entity_type, entity_id, cache_key);
 CREATE INDEX IF NOT EXISTS idx_api_usage_platform ON api_usage(platform, recorded_at);
+CREATE INDEX IF NOT EXISTS idx_orgs_processing_status ON organizations(processing_status, vertical_id);

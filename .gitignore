@@ -35,3 +35,10 @@ n8n_data/
 # IDE
 .vscode/
 .idea/
+
+# Playwright MCP artifacts
+.playwright-mcp/
+
+# Claude local settings
+.claude/settings.local.json
+.mcp.json

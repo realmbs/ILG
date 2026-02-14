@@ -243,6 +243,70 @@ via the `00-full-pipeline.json` master workflow. All stages are user-triggered b
 
 ---
 
+## 3.5 Lessons Learned: First E2E Test (2026-02-14)
+
+The first end-to-end pipeline test ("corporate litigation law firms in Texas") validated the core architecture but exposed critical operational issues. 10 orgs discovered, 50 contacts extracted (5 per firm) across Org Discovery and Contact Extraction stages.
+
+### Key Findings
+
+**1. Context Window Management is Critical**
+- Processing 10 firms sequentially exhausted Claude's context window mid-extraction, requiring a session restart
+- Each Playwright `browser_snapshot` generates large accessibility tree outputs that accumulate rapidly
+- **Solution**: Batch processing (5 orgs at a time), incremental DB commits after each batch, prefer `browser_run_code` over click-by-click
+
+**2. Playwright `browser_run_code` is 5-10x More Efficient**
+- Click-by-click navigation: 5-10 turns per firm, massive context consumption from snapshot outputs
+- `browser_run_code`: 1-2 turns per firm, returns only extracted data
+- **Pattern**: Use `run_code` as default for data extraction; reserve click-by-click for search form interaction or when nav structure needs reading
+
+**3. Cookie Popups Block Automation**
+- ~60% of crawled sites had cookie consent banners intercepting pointer events
+- Not accounted for in original skill designs
+- **Solution**: Proactive popup dismissal as first step when visiting any page (non-blocking, continue if not found)
+
+**4. People Page URLs Have No Standard**
+- Tested: `/people`, `/professionals`, `/attorneys`, `/our-attorneys`, `/our-people`, `/lawyers`, `/team`, `/leadership`
+- Many first attempts returned 404s, wasting turns and context
+- **Solution**: Check nav menu + footer first (most reliable), then try URL patterns, fallback to sitemap.xml
+
+**5. Email Addresses Often Missing**
+- 4/10 firms (40%) had no individual emails on public team pages
+- Original skill had no guidance on fallback or tracking
+- **Solution**: Add `email_status` column to contacts table to distinguish "not found" from "not yet checked"
+
+**6. Phase 1 Scoring Formula Needed Rebalancing**
+- Original: `(signal * 0.5) + (role * 0.3) + (org_fit * 0.2)` — but signal_score is always 0 in Phase 1
+- 50% of formula produced zeros, compressing effective score variance
+- **Solution**: Phase-aware weighting — use `(role * 0.6) + (org_fit * 0.4)` when no signals exist
+
+**7. Database Lacked Processing State Tracking**
+- No `processing_status` on organizations — couldn't distinguish "not yet enriched" from "enrichment failed"
+- Session interruptions required manual DB inspection to determine restart point
+- **Solution**: Migration 001 adding `processing_status`, `enrichment_attempted_at`, `email_status` columns
+
+### Changes Implemented
+
+| Change | Files |
+|--------|-------|
+| Playwright `run_code` preference + cookie handling | `org-discoverer.md`, `contact-extractor.md` |
+| Batch processing (5 orgs/batch) with incremental commits | `contact-extractor.md` |
+| Phase 1 scoring weight override | `lead-scorer.md` |
+| Processing status tracking columns | `schema.sql`, migration `001` |
+| URL discovery strategy (nav → patterns → sitemap) | `contact-extractor.md` |
+| Email status tracking | `schema.sql`, `contact-extractor.md` |
+
+### Validation Status
+
+| Stage | Status | Notes |
+|-------|--------|-------|
+| Org Discovery | Validated | 10 law firms discovered from web sources |
+| Contact Extraction | Validated | 50 contacts across 10 firms, 30 with emails |
+| Lead Scoring | Formula updated | Phase 1 weights ready, not yet run on test data |
+| Signal Collection | Not tested | Phase 2 |
+| Sentiment Analysis | Not tested | Phase 2 |
+
+---
+
 ## 4. Skills
 
 Skills are markdown instruction files in `claude-skills/`. Each defines what Claude should do
@@ -628,14 +692,18 @@ Tasks:
 2. ~~Initialize SQLite with schema from Section 7~~ **DONE** (8 tables, 10 indexes)
 3. ~~Build `vertical-adapter` skill~~ **DONE** (`claude-skills/vertical-adapter.md`)
 4. ~~Build `org-discoverer` skill + org-discovery-agent~~ **DONE** (skill + YAML config)
-5. Implement Playwright MCP web scraping for directory crawling — **NEXT: test against real sources**
-6. ~~Build `lead-scorer` skill (simple recency-weighted signal count)~~ **DONE** (`claude-skills/lead-scorer.md`)
-7. ~~Build `contact-extractor` skill~~ **DONE** (`claude-skills/contact-extractor.md`)
-8. CSV export workflow — **DONE** (`scripts/export-leads.py`); Google Sheets deferred to Phase 1b
+5. ~~Implement Playwright MCP web scraping for directory crawling~~ **DONE** (validated with 10 law firms, 2026-02-14)
+6. ~~Build `lead-scorer` skill~~ **DONE** (`claude-skills/lead-scorer.md`, Phase 1 weight override added)
+7. ~~Build `contact-extractor` skill~~ **DONE** (`claude-skills/contact-extractor.md`, batch processing + `run_code` patterns added)
+8. ~~CSV export workflow~~ **DONE** (`scripts/export-leads.py`); Google Sheets deferred to Phase 1b
 9. ~~Create default vertical configs for law firms and law schools~~ **DONE** (3 configs seeded)
-10. Test end-to-end: "law firms in Texas" → scored CSV — **NEXT**
+10. ~~Test end-to-end: "law firms in Texas" → contacts extracted~~ **DONE** (10 orgs, 50 contacts, 2026-02-14)
+11. ~~Update skills with E2E test learnings~~ **DONE** (Playwright efficiency, cookie handling, batch processing, Phase 1 scoring)
+12. ~~DB migration 001: processing status tracking~~ **DONE** (`db/migrations/001-add-processing-status.sql`)
+13. Run lead scoring on test data and export to CSV — **NEXT**
+14. Second E2E test with batch processing to validate context management — **NEXT**
 
-**Deliverable:** Manually triggered pipeline that produces a scored lead list within 15 minutes.
+**Deliverable:** Manually triggered pipeline that produces a scored lead list within 15 minutes. **STATUS: Org discovery + contact extraction validated. Scoring and export pending.**
 
 ### Phase 2: Sentiment Layer (Weeks 4-6)
 

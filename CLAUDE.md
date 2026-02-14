@@ -5,25 +5,27 @@ Built for a single operator. Adapts to any vertical via natural language input.
 
 ## Current Status
 
-**Phase 1 MVP — scaffolding complete, pipeline not yet tested end-to-end.**
+**Phase 1 MVP — first E2E test complete, skills optimized based on real-world results.**
 
 What's done:
 - Project structure scaffolded (all directories, configs, scripts)
-- SQLite database initialized (8 tables, 10 indexes) at `db/ilg.db`
+- SQLite database initialized (8 tables, 11 indexes) at `db/ilg.db`
 - 3 default vertical configs seeded (law-firms-corporate, law-schools, law-firms-general)
-- 4 Claude skills written (vertical-adapter, org-discoverer, contact-extractor, lead-scorer)
+- 4 Claude skills written and tested (vertical-adapter, org-discoverer, contact-extractor, lead-scorer)
 - 2 skill stubs for Phase 2/3 (sentiment-classifier, outreach-drafter)
 - 4 agent YAML configs defined
 - 3 custom MCP server stubs (reddit, twitter, linkedin — Phase 2)
 - Docker Desktop installed, n8n configured via docker-compose.yml
 - MCP servers configured: Playwright, Filesystem, Sequential Thinking
+- **First E2E test completed (2026-02-14):** 10 law firms discovered, 50 contacts extracted
+- **Skills updated with E2E learnings:** `browser_run_code` patterns, cookie handling, batch processing, Phase 1 scoring weights
+- **DB migration 001 created:** processing status tracking for orgs and contacts
 
 What's next:
-- Run first end-to-end pipeline test: "law firms in Texas" → scored CSV
-- Validate Playwright MCP web scraping against real discovery sources
-- Validate contact extraction from org websites
-- Test lead scoring with real data
-- Iterate on skill instructions based on real-world results
+- Run DB migration 001 on existing database
+- Run lead scoring on extracted contacts and export to CSV
+- Second E2E test with optimized batch processing to validate context management
+- Test with a different vertical (e.g., law schools) to validate vertical-agnostic design
 
 ## Stack
 
@@ -59,9 +61,11 @@ ILG/
 │   └── linkedin-mcp/
 ├── n8n-workflows/             # Exported workflow JSON (empty — workflows built in n8n UI)
 ├── db/                        # SQLite schema and init
-│   ├── schema.sql             # 8 tables, 10 indexes
+│   ├── schema.sql             # 8 tables, 11 indexes
 │   ├── init.js                # Node.js init script (better-sqlite3)
-│   └── package.json
+│   ├── package.json
+│   └── migrations/            # Incremental schema changes
+│       └── 001-add-processing-status.sql
 ├── config/
 │   ├── .env.example           # API key template
 │   └── default-verticals/     # Pre-built vertical configs (3 files)
@@ -94,6 +98,22 @@ queries, error handling, and rate limits for each stage.
 
 **Agents** — YAML configs in `claude-agents/`. They declare which skills and MCP servers
 to use, autonomy level, and review checkpoints. Not runnable code — declarative configs.
+
+## Playwright Best Practices
+
+Learned from the first E2E test (2026-02-14). Critical for preventing context exhaustion.
+
+**Use `browser_run_code` by default.** Executes full Playwright scripts in a single turn. Click-by-click (`browser_click` → `browser_snapshot` → repeat) consumes 5-10x more context. Reserve click-by-click for reading nav structure or filling search forms.
+
+**Dismiss cookie popups first on every page.** ~60% of sites have consent banners that intercept pointer events. Non-blocking — continue if not found:
+```javascript
+const btn = page.locator('button:has-text("Accept"), button:has-text("Agree")').first();
+if (await btn.isVisible({ timeout: 2000 }).catch(() => false)) await btn.click().catch(() => {});
+```
+
+**Batch processing: 5 orgs per batch.** Commit to DB after each batch. Prevents context exhaustion and enables resume after session interruption.
+
+**URL discovery for people/team pages.** Check nav menu first (most reliable), then try common URL patterns (`/attorneys`, `/people`, `/team`, `/professionals`), fallback to sitemap.xml. Mark org as `no_public_team_page` if all fail — don't retry endlessly.
 
 ## Commands
 
@@ -141,7 +161,7 @@ python3 scripts/export-leads.py law-firms-tx-corporate-lit  # Export specific ve
 
 ## Database Quick Reference
 
-8 tables in `db/ilg.db` (full schema in `db/schema.sql`):
+8 tables, 11 indexes in `db/ilg.db` (full schema in `db/schema.sql`):
 
 | Table | Purpose |
 |-------|---------|
@@ -180,4 +200,9 @@ python3 scripts/export-leads.py law-firms-tx-corporate-lit  # Export specific ve
 - Twitter/X free tier: 1,500 reads/month TOTAL across all endpoints. One `search_recent` with `max_results=100` = 1 read.
 - n8n webhook URLs break if machine IP changes. Use DuckDNS or static IP for stable webhooks.
 - Google Sheets API: 300 req/min quota. Batch writes into single `spreadsheets.values.update` calls.
-- MCP server package names in `.claude/settings.json` may need verification — test with `npx claude-code-templates@latest` if connections fail.
+- MCP server package names: `@playwright/mcp`, `@modelcontextprotocol/server-filesystem`, `@modelcontextprotocol/server-sequential-thinking`. Originally scaffolded with wrong `@anthropic-ai/mcp-*` names — fixed 2026-02-14.
+- **Playwright `browser_run_code` vs click-by-click:** `run_code` is 5-10x more efficient for data extraction. The first E2E test exhausted context window processing 10 firms with click-by-click; `run_code` completed same task in 1/5 the turns.
+- **Cookie popups are universal:** ~60% of crawled sites in E2E test had cookie consent banners blocking clicks. Always dismiss proactively when landing on any page.
+- **Email addresses often not public:** In corporate law firm test, 40% of firms had no individual emails on public team pages. Don't fail extraction — store contacts and track via `email_status` column.
+- **People page URLs have no standard:** Tested: `/attorneys`, `/people`, `/team`, `/professionals`, `/our-attorneys`, `/our-people`, `/lawyers`, `/leadership`. Always check nav menu first.
+- **Phase 1 scoring uses different weights:** Signal score is always 0 when no sentiment data exists. lead-scorer uses phase-aware weights: `(role * 0.6) + (org_fit * 0.4)` when signals table is empty.
