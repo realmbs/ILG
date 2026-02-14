@@ -3,30 +3,75 @@
 AI-powered vertical B2B lead generation with social media sentiment analysis.
 Built for a single operator. Adapts to any vertical via natural language input.
 
+## Current Status
+
+**Phase 1 MVP — scaffolding complete, pipeline not yet tested end-to-end.**
+
+What's done:
+- Project structure scaffolded (all directories, configs, scripts)
+- SQLite database initialized (8 tables, 10 indexes) at `db/ilg.db`
+- 3 default vertical configs seeded (law-firms-corporate, law-schools, law-firms-general)
+- 4 Claude skills written (vertical-adapter, org-discoverer, contact-extractor, lead-scorer)
+- 2 skill stubs for Phase 2/3 (sentiment-classifier, outreach-drafter)
+- 4 agent YAML configs defined
+- 3 custom MCP server stubs (reddit, twitter, linkedin — Phase 2)
+- Docker Desktop installed, n8n configured via docker-compose.yml
+- MCP servers configured: Playwright, Filesystem, Sequential Thinking
+
+What's next:
+- Run first end-to-end pipeline test: "law firms in Texas" → scored CSV
+- Validate Playwright MCP web scraping against real discovery sources
+- Validate contact extraction from org websites
+- Test lead scoring with real data
+- Iterate on skill instructions based on real-world results
+
 ## Stack
 
 - **Orchestration:** n8n (self-hosted Community Edition, Docker)
 - **Intelligence:** Claude Code + custom skills/agents
-- **Data Bridge:** MCP servers (Playwright, Reddit, Twitter, LinkedIn, PostgreSQL, Google Sheets)
+- **Data Bridge:** MCP servers (Playwright, Filesystem, Sequential Thinking active; Reddit, Twitter, LinkedIn stubs for Phase 2)
 - **Storage:** SQLite at `db/ilg.db` (PostgreSQL migration path for SaaS phase)
 - **Language:** TypeScript for MCP servers, Python for utility scripts
-- **Export:** Google Sheets, CSV
+- **Export:** CSV (Google Sheets deferred to Phase 1b)
 
 ## Project Structure
 
 ```
 ILG/
-├── CLAUDE.md              # This file
-├── PLAN.md                # Full architecture, data model, research, roadmap
-├── .claude/settings.json  # MCP server configs
-├── claude-skills/         # Skill definitions (markdown instruction files)
-├── claude-agents/         # Agent configs (YAML)
-├── mcp-servers/           # Custom MCP servers (reddit, twitter, linkedin)
-├── n8n-workflows/         # Exported workflow JSON
-├── db/                    # Schema, migrations, seeds
-├── config/                # .env, default vertical configs
-├── scripts/               # Setup, backup, export utilities
-└── docs/                  # Architecture docs, guides
+├── CLAUDE.md                  # This file — project rules and current status
+├── PLAN.md                    # Full architecture, data model, research, roadmap
+├── .claude/settings.json      # MCP server configs (Playwright, Filesystem, Sequential Thinking)
+├── claude-skills/             # Skill definitions (markdown instruction files)
+│   ├── vertical-adapter.md    # [DONE] NL → vertical_config JSON
+│   ├── org-discoverer.md      # [DONE] Playwright crawl → organizations table
+│   ├── contact-extractor.md   # [DONE] Website crawl → contacts table
+│   ├── lead-scorer.md         # [DONE] Composite scoring model v1
+│   ├── sentiment-classifier.md # [STUB] Phase 2
+│   └── outreach-drafter.md    # [STUB] Phase 3
+├── claude-agents/             # Agent configs (YAML)
+│   ├── org-discovery-agent.yaml
+│   ├── enrichment-agent.yaml
+│   ├── scoring-agent.yaml
+│   └── sentiment-agent.yaml   # Phase 2
+├── mcp-servers/               # Custom MCP server stubs (Phase 2)
+│   ├── reddit-mcp/
+│   ├── twitter-mcp/
+│   └── linkedin-mcp/
+├── n8n-workflows/             # Exported workflow JSON (empty — workflows built in n8n UI)
+├── db/                        # SQLite schema and init
+│   ├── schema.sql             # 8 tables, 10 indexes
+│   ├── init.js                # Node.js init script (better-sqlite3)
+│   └── package.json
+├── config/
+│   ├── .env.example           # API key template
+│   └── default-verticals/     # Pre-built vertical configs (3 files)
+├── scripts/
+│   ├── setup.sh               # One-command project setup
+│   ├── backup-db.sh           # SQLite backup with rotation
+│   └── export-leads.py        # CSV export utility
+├── docs/                      # Architecture, guides
+├── exports/                   # CSV output directory
+└── docker-compose.yml         # n8n service
 ```
 
 ## Key Concepts
@@ -36,33 +81,44 @@ generated from natural language input. It defines org types, role targets, signa
 taxonomy, keywords, subreddits, and scoring weights. Nothing is hardcoded to a
 specific industry. See PLAN.md Section 2 for full schema.
 
-**Pipeline Stages** — Five sequential stages, each an n8n workflow:
+**Pipeline Stages** — Five sequential stages:
 1. Org Discovery (Playwright crawl of directories/listings)
-2. Contact Extraction (website + LinkedIn enrichment)
-3. Signal Collection (LinkedIn, Reddit, Twitter raw text)
-4. Sentiment Analysis (Claude classifies signals per vertical taxonomy)
-5. Scoring & Export (composite lead scores to Google Sheets/CSV)
+2. Contact Extraction (website crawl for team pages — LinkedIn enrichment in Phase 2)
+3. Signal Collection (LinkedIn, Reddit, Twitter raw text — Phase 2)
+4. Sentiment Analysis (Claude classifies signals per vertical taxonomy — Phase 2)
+5. Scoring & Export (composite lead scores to CSV — Google Sheets in Phase 1b)
+
+**Skills** — Markdown instruction files in `claude-skills/`. Claude Code reads them as
+context when performing pipeline tasks. They define the step-by-step process, SQL
+queries, error handling, and rate limits for each stage.
+
+**Agents** — YAML configs in `claude-agents/`. They declare which skills and MCP servers
+to use, autonomy level, and review checkpoints. Not runnable code — declarative configs.
 
 ## Commands
 
 ```bash
-# Setup
-docker compose up -d                    # Start n8n
-node db/init.js                         # Initialize SQLite schema
+# Setup (first time)
+bash scripts/setup.sh                   # Creates DB, seeds verticals, copies .env
+
+# n8n
+docker compose up -d                    # Start n8n (http://localhost:5678, admin/ilg-admin)
+docker compose down                     # Stop n8n
+
+# Database
+cd db && npm run init                   # Initialize/reinitialize SQLite schema
+cd db && npm run reset                  # Delete DB and reinitialize from scratch
 
 # Run pipeline (via Claude Code — example prompts)
-"Run full pipeline for mid-size law firms in Texas doing corporate litigation"
-"Discover organizations: paralegal programs in Florida"
-"Collect signals for vertical law-firms-tx"
-"Score and export leads for law-firms-tx to Google Sheets"
-
-# MCP servers
-cd mcp-servers/reddit-mcp && npm start  # Start Reddit MCP
-cd mcp-servers/twitter-mcp && npm start # Start Twitter MCP
+"Show me all configured verticals"
+"Discover organizations for law firms in Texas doing corporate litigation"
+"Extract contacts for law-firms-tx-corporate-lit"
+"Score leads for law-firms-tx-corporate-lit"
 
 # Utilities
-python scripts/backup-db.py             # Backup SQLite
-python scripts/export-leads.py          # CSV export
+bash scripts/backup-db.sh              # Backup SQLite with timestamp
+python3 scripts/export-leads.py        # Export all scored leads to CSV
+python3 scripts/export-leads.py law-firms-tx-corporate-lit  # Export specific vertical
 ```
 
 ## Code Style
@@ -83,18 +139,38 @@ python scripts/export-leads.py          # CSV export
 - **Scraping safety:** Randomized delays (2-8s web, 30-120s LinkedIn). No data behind auth walls.
 - **No PII in Claude API prompts** when avoidable. Summarize before sending for analysis.
 
-## Detailed Documentation (progressive disclosure)
+## Database Quick Reference
+
+8 tables in `db/ilg.db` (full schema in `db/schema.sql`):
+
+| Table | Purpose |
+|-------|---------|
+| `vertical_configs` | Cached vertical definitions (3 seeded) |
+| `organizations` | Discovered orgs |
+| `contacts` | People at orgs |
+| `signals` | Raw + analyzed social signals (Phase 2) |
+| `lead_scores` | Composite scores with tier labels |
+| `enrichment_cache` | Prevents redundant API calls |
+| `outreach_log` | Draft/sent message tracking (Phase 3) |
+| `api_usage` | Rate limit tracking for free tier budgets |
+
+## Detailed Documentation
 
 - Full architecture, data model, MCP specs, skills, agents, roadmap → `PLAN.md`
 - Database schema → `db/schema.sql`
 - Vertical config examples → `config/default-verticals/`
 - Individual skill instructions → `claude-skills/*.md`
-- MCP server build guides → `docs/MCP-SERVER-GUIDE.md`
+- Adding new verticals → `docs/ADDING-VERTICALS.md`
+- MCP server build guide → `docs/MCP-SERVER-GUIDE.md`
+- Architecture overview → `docs/ARCHITECTURE.md`
 
-## Active Verticals
+## Active Verticals (seeded in DB)
 
-1. **Law firms** (corporate litigation) — current Procertas pivot, primary target
-2. **Law schools & paralegal programs** — existing vertical, still active
+| vertical_id | Name | Status |
+|-------------|------|--------|
+| `law-firms-tx-corporate-lit` | Corporate Litigation Law Firms — Texas | Primary target |
+| `law-schools-aba-accredited` | ABA-Accredited Law Schools — Nationwide | Active |
+| `law-firms-general` | Law Firms — All Practice Areas | Broad template |
 
 ## Gotchas
 
@@ -104,3 +180,4 @@ python scripts/export-leads.py          # CSV export
 - Twitter/X free tier: 1,500 reads/month TOTAL across all endpoints. One `search_recent` with `max_results=100` = 1 read.
 - n8n webhook URLs break if machine IP changes. Use DuckDNS or static IP for stable webhooks.
 - Google Sheets API: 300 req/min quota. Batch writes into single `spreadsheets.values.update` calls.
+- MCP server package names in `.claude/settings.json` may need verification — test with `npx claude-code-templates@latest` if connections fail.

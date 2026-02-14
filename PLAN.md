@@ -621,18 +621,19 @@ docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n n8nio/n8
 
 ### Phase 1: Foundation MVP (Weeks 1-3)
 
-**Goal:** Working local pipeline from vertical input to scored leads in Google Sheets.
+**Goal:** Working local pipeline from vertical input to scored leads in CSV.
 
 Tasks:
-1. Scaffold project structure per CLAUDE.md
-2. Initialize SQLite with schema from Section 7
-3. Build `vertical-adapter` skill (everything downstream depends on this)
-4. Build `org-discoverer` skill + org-discovery-agent
-5. Implement Playwright MCP web scraping for directory crawling
-6. Build `lead-scorer` skill (simple recency-weighted signal count)
-7. Create Google Sheets export workflow in n8n
-8. Create default vertical configs for law firms and law schools
-9. Test end-to-end: "law firms in Texas" to scored Google Sheet
+1. ~~Scaffold project structure per CLAUDE.md~~ **DONE**
+2. ~~Initialize SQLite with schema from Section 7~~ **DONE** (8 tables, 10 indexes)
+3. ~~Build `vertical-adapter` skill~~ **DONE** (`claude-skills/vertical-adapter.md`)
+4. ~~Build `org-discoverer` skill + org-discovery-agent~~ **DONE** (skill + YAML config)
+5. Implement Playwright MCP web scraping for directory crawling — **NEXT: test against real sources**
+6. ~~Build `lead-scorer` skill (simple recency-weighted signal count)~~ **DONE** (`claude-skills/lead-scorer.md`)
+7. ~~Build `contact-extractor` skill~~ **DONE** (`claude-skills/contact-extractor.md`)
+8. CSV export workflow — **DONE** (`scripts/export-leads.py`); Google Sheets deferred to Phase 1b
+9. ~~Create default vertical configs for law firms and law schools~~ **DONE** (3 configs seeded)
+10. Test end-to-end: "law firms in Texas" → scored CSV — **NEXT**
 
 **Deliverable:** Manually triggered pipeline that produces a scored lead list within 15 minutes.
 
